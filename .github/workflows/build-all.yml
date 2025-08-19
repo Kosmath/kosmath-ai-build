@@ -1,0 +1,66 @@
+name: build-all
+on:
+  workflow_dispatch:  # bouton "Run workflow"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Build Windows EXE (Electron)
+        working-directory: desktop-electron
+        run: |
+          npm ci
+          npx electron-builder --win nsis
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: desktop-electron/dist/**
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Build Linux AppImage + deb (Electron)
+        working-directory: desktop-electron
+        run: |
+          npm ci
+          npx electron-builder --linux AppImage deb
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: desktop-electron/dist/**
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Install & Sync Capacitor (Android)
+        working-directory: mobile-capacitor
+        run: |
+          npm ci
+          npx cap add android || true
+          npx cap sync android
+      - name: Build APK (release)
+        working-directory: mobile-capacitor/android
+        run: ./gradlew assembleRelease
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: mobile-capacitor/android/app/build/outputs/apk/release/*.apk
